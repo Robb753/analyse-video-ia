@@ -44,19 +44,21 @@
           🔄 Changer de vidéo
         </button>
       </div>
+      
       <!-- Type de mouvement sélectionné -->
-<div class="motion-type">
-  <label for="activity_type" class="form-label">Quel est le type de mouvement analysé ?</label><br />
-  <select name="activity_type" id="activity_type" class="select-input" required>
-    <option value="">-- Choisissez une catégorie --</option>
-    <option value="basketball">Tir au basket</option>
-    <option value="golf">Swing de golf</option>
-    <option value="yoga">Posture de yoga</option>
-    <option value="squat">Exercice de squat</option>
-    <option value="équilibre">Test d’équilibre</option>
-    <option value="autre">Autre ou inconnu</option>
-  </select>
-</div>
+      <div class="motion-type">
+        <label for="activity_type" class="form-label">Quel est le type de mouvement analysé ?</label><br />
+        <select name="activity_type" id="activity_type" class="select-input">
+          <option value="autre">-- Choisissez une catégorie --</option>
+          <option value="basketball">Tir au basket</option>
+          <option value="golf">Swing de golf</option>
+          <option value="yoga">Posture de yoga</option>
+          <option value="squat">Exercice de squat</option>
+          <option value="équilibre">Test d'équilibre</option>
+          <option value="autre">Autre ou inconnu</option>
+        </select>
+      </div>
+
       <div class="upload-status" id="uploadStatus">
         🎬 Vidéo prête pour l'analyse !
       </div>
@@ -74,6 +76,7 @@
 
   <script>
     let videoUpload = document.getElementById('video-upload');
+    let selectedFile = null; // Stockage du fichier sélectionné
     const uploadLabel = document.getElementById('uploadLabel');
     const videoPreview = document.getElementById('videoPreview');
     const previewVideo = document.getElementById('previewVideo');
@@ -83,6 +86,7 @@
     const fileSize = document.getElementById('fileSize');
     const videoDuration = document.getElementById('videoDuration');
     const changeVideoBtn = document.getElementById('changeVideoBtn');
+    const activitySelect = document.getElementById('activity_type');
 
     function formatFileSize(bytes) {
       if (bytes === 0) return '0 Bytes';
@@ -98,6 +102,23 @@
       return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
     }
 
+    function checkFormValidity() {
+      const hasFile = selectedFile !== null;
+      const hasActivity = activitySelect.value !== '';
+      
+      if (hasFile && hasActivity) {
+        analyzeBtn.disabled = false;
+        analyzeBtn.classList.add('enabled');
+        analyzeBtn.innerHTML = '🚀 Analyser cette vidéo';
+        analyzeBtn.style.animation = 'pulse 2s infinite';
+      } else {
+        analyzeBtn.disabled = true;
+        analyzeBtn.classList.remove('enabled');
+        analyzeBtn.innerHTML = '🚀 Analyser ma vidéo';
+        analyzeBtn.style.animation = 'none';
+      }
+    }
+
     function handleVideoUpload(e) {
       const file = e.target.files[0];
       
@@ -109,6 +130,8 @@
         if (!validTypes.includes(file.type)) {
           alert('Format de fichier non supporté. Utilisez MP4 ou MOV.');
           e.target.value = '';
+          selectedFile = null;
+          checkFormValidity();
           return;
         }
 
@@ -116,8 +139,13 @@
         if (file.size > 100 * 1024 * 1024) {
           alert('Fichier trop volumineux. Limite de 100MB.');
           e.target.value = '';
+          selectedFile = null;
+          checkFormValidity();
           return;
         }
+
+        // Stocker le fichier
+        selectedFile = file;
 
         // Créer une URL pour la prévisualisation
         const videoURL = URL.createObjectURL(file);
@@ -136,11 +164,6 @@
         videoPreview.classList.add('show');
         uploadStatus.classList.add('success');
         
-        // Activer le bouton d'analyse
-        analyzeBtn.disabled = false;
-        analyzeBtn.classList.add('enabled');
-        analyzeBtn.innerHTML = '🚀 Analyser cette vidéo';
-        
         // Changer le texte du bouton d'upload
         uploadLabel.innerHTML = '✅ Vidéo chargée<input type="file" name="video" id="video-upload" accept="video/mp4,video/quicktime" />';
         
@@ -148,8 +171,8 @@
         videoUpload = document.getElementById('video-upload');
         videoUpload.addEventListener('change', handleVideoUpload);
         
-        // Animation du bouton
-        analyzeBtn.style.animation = 'pulse 2s infinite';
+        // Vérifier la validité du formulaire
+        checkFormValidity();
       }
     }
 
@@ -157,12 +180,9 @@
       console.log('Changement de vidéo demandé');
       
       // Réinitialiser tout
+      selectedFile = null;
       videoPreview.classList.remove('show');
       uploadStatus.classList.remove('success');
-      analyzeBtn.disabled = true;
-      analyzeBtn.classList.remove('enabled');
-      analyzeBtn.innerHTML = '🚀 Analyser ma vidéo';
-      analyzeBtn.style.animation = 'none';
       
       // Réinitialiser le label d'upload
       uploadLabel.innerHTML = '📁 Téléverser une vidéo<input type="file" name="video" id="video-upload" accept="video/mp4,video/quicktime" />';
@@ -176,21 +196,56 @@
         URL.revokeObjectURL(previewVideo.src);
         previewVideo.src = '';
       }
+      
+      // Vérifier la validité du formulaire
+      checkFormValidity();
     }
+
+    // Vérifier la validité quand l'activité change
+    activitySelect.addEventListener('change', checkFormValidity);
 
     // Attacher les événements initiaux
     videoUpload.addEventListener('change', handleVideoUpload);
     changeVideoBtn.addEventListener('click', changeVideo);
 
-    // Empêcher la soumission du formulaire si pas de vidéo
+    // Gestion de la soumission du formulaire
     document.getElementById('upload-form').addEventListener('submit', function(e) {
-      if (analyzeBtn.disabled) {
+      console.log('Tentative de soumission du formulaire');
+      
+      // Vérifications avant soumission
+      if (!selectedFile) {
         e.preventDefault();
         alert('Veuillez d\'abord sélectionner une vidéo.');
         return false;
       }
+      
+      if (!activitySelect.value) {
+        e.preventDefault();
+        alert('Veuillez sélectionner un type d\'activité.');
+        return false;
+      }
+      
+      // S'assurer que le fichier est bien dans l'input
+      const currentFileInput = document.getElementById('video-upload');
+      if (!currentFileInput.files || currentFileInput.files.length === 0) {
+        console.log('Réattachement du fichier à l\'input');
+        // Créer un nouveau FileList avec notre fichier stocké
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(selectedFile);
+        currentFileInput.files = dataTransfer.files;
+      }
+      
       console.log('Formulaire soumis - analyse en cours...');
+      
+      // Désactiver le bouton pour éviter les doubles soumissions
+      analyzeBtn.disabled = true;
+      analyzeBtn.innerHTML = '⏳ Envoi en cours...';
+      
+      return true;
     });
+
+    // Vérification initiale
+    checkFormValidity();
   </script>
 </body>
 </html>

@@ -6,7 +6,7 @@ import schedule
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 from scripts.analyze_video import analyze_video
-from scripts.gpt_feedback import generate_feedback
+from scripts.gemini_feedback import generate_feedback
 
 UPLOAD_FOLDER = 'uploads'
 PROCESSED_FOLDER = 'processed'
@@ -186,24 +186,48 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
+    print(f"Requête reçue: {request.method}")
+    print(f"Fichiers dans la requête: {list(request.files.keys())}")
+    print(f"Données du formulaire: {dict(request.form)}")
+    
     if 'video' not in request.files:
+        print("❌ Aucun fichier vidéo dans la requête")
         flash('Aucun fichier vidéo envoyé.')
         return redirect(url_for('index'))
 
     file = request.files['video']
     if file.filename == '':
+        print("❌ Nom de fichier vide")
         flash('Fichier non sélectionné.')
         return redirect(url_for('index'))
 
-    if file and allowed_file(file.filename):
-        activity_type = request.form.get('activity_type', 'non spécifié')
+    if not file or not allowed_file(file.filename):
+        print(f"❌ Fichier non autorisé: {file.filename if file else 'None'}")
+        flash('Format de fichier non autorisé.')
+        return redirect(url_for('index'))
+
+    try:
+        activity_type = request.form.get('activity_type', 'autre')
+        print(f"✅ Type d'activité: {activity_type}")
+        
         filename = secure_filename(file.filename)
         input_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         output_path = os.path.join(app.config['PROCESSED_FOLDER'], f"processed_{filename}")
+        
+        print(f"💾 Sauvegarde du fichier: {input_path}")
         file.save(input_path)
+        
+        # Vérifier que le fichier a bien été sauvegardé
+        if not os.path.exists(input_path):
+            print("❌ Erreur: fichier non sauvegardé")
+            flash('Erreur lors de la sauvegarde du fichier.')
+            return redirect(url_for('index'))
+        
+        print(f"✅ Fichier sauvegardé avec succès. Taille: {os.path.getsize(input_path)} bytes")
 
         # ID de tâche unique
         task_id = f"task_{int(time.time())}_{filename}"
+        print(f"🆔 Task ID: {task_id}")
 
         # Initialise l'entrée de suivi
         analysis_progress[task_id] = {
@@ -213,7 +237,7 @@ def upload_file():
             'activity_type': activity_type,
             'filename': filename,
             'upload_time': time.time(),
-            'input_path': input_path,  # Stocke le chemin pour nettoyage
+            'input_path': input_path,
             'output_path': output_path
         }
 
@@ -224,10 +248,13 @@ def upload_file():
         )
         thread.daemon = True
         thread.start()
-
+        
+        print(f"🚀 Thread d'analyse démarré pour {task_id}")
         return redirect(url_for('progress', task_id=task_id))
-    else:
-        flash('Format de fichier non autorisé.')
+        
+    except Exception as e:
+        print(f"❌ Erreur lors du traitement: {str(e)}")
+        flash(f'Erreur lors du traitement: {str(e)}')
         return redirect(url_for('index'))
 
 @app.route('/progress/<task_id>')

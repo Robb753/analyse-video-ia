@@ -15,6 +15,39 @@
       Ton navigateur ne prend pas en charge la vidéo.
     </video>
 
+    <script>
+      // Vérifier si la vidéo peut être lue
+      document.querySelector('video').addEventListener('error', function(e) {
+          console.error('Erreur vidéo:', e);
+          this.style.display = 'none';
+          
+          // Créer un message d'erreur
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'video-error';
+          errorDiv.innerHTML = `
+              <h3>⚠️ Problème de lecture vidéo</h3>
+              <p>La vidéo analysée ne peut pas être affichée. Cela peut arriver si :</p>
+              <ul style="text-align: left; display: inline-block;">
+                  <li>Le format vidéo n'est pas compatible</li>
+                  <li>L'analyse a échoué en partie</li>
+                  <li>Le fichier est corrompu</li>
+              </ul>
+              <p><strong>Solution :</strong> Essayez avec une vidéo MP4 de meilleure qualité.</p>
+          `;
+          
+          this.parentNode.insertBefore(errorDiv, this.nextSibling);
+      });
+      
+      // Vérifier si la vidéo se charge
+      document.querySelector('video').addEventListener('loadstart', function() {
+          console.log('Début du chargement vidéo');
+      });
+      
+      document.querySelector('video').addEventListener('canplay', function() {
+          console.log('Vidéo prête à être lue');
+      });
+      </script>
+
     <div class="action-buttons">
       <a class="submit-button" href="{{ url_for('download_file', filename=filename) }}" download>
         📥 Télécharger la vidéo annotée

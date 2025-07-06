@@ -1,8 +1,12 @@
-flask
-python-dotenv
-openai
-opencv-python
-mediapipe
-numpy
-werkzeug
-schedule
+# Ordre d'installation CRITIQUE
+protobuf==4.25.4
+mediapipe==0.10.21
+google-generativeai==0.8.3
+
+# Autres dépendances
+flask==3.0.0
+python-dotenv==1.0.0
+opencv-python==4.8.1.78
+numpy==1.24.3
+werkzeug==3.0.1
+schedule==1.2.0
