@@ -1,0 +1,8 @@
+flask
+python-dotenv
+openai
+opencv-python
+mediapipe
+numpy
+werkzeug
+schedule

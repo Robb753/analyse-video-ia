@@ -1,0 +1,239 @@
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #fdf6ee; /* Fond crème */
+  font-family: "Segoe UI", sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  color: #333;
+  padding: 2rem 0;
+}
+
+.container {
+  text-align: center;
+  max-width: 600px;
+  padding: 2rem;
+}
+
+.title {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: #222;
+}
+
+.upload-button {
+  display: inline-block;
+  background-color: #f5e8d4;
+  color: #222;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  border: 1px solid #e0c9aa;
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-button:hover {
+  background-color: #f1dcbf;
+}
+
+.upload-button input[type="file"] {
+  opacity: 0;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.video-preview-container {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background-color: #f9f1e6;
+  border-radius: 12px;
+  border: 2px dashed #e0c9aa;
+  display: none; /* Caché par défaut */
+}
+
+.video-preview-container.show {
+  display: block;
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.video-preview {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.video-info {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #fff;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.video-info h3 {
+  margin: 0 0 0.5rem 0;
+  color: #4CAF50;
+  font-size: 1.1rem;
+}
+
+.video-details {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.submit-button {
+  margin-top: 1rem;
+  background-color: #e0c9aa;
+  color: #222;
+  padding: 0.8rem 1.6rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-decoration: none;
+  display: inline-block;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.submit-button.enabled {
+  opacity: 1;
+  pointer-events: auto;
+  background-color: #4CAF50;
+  color: white;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.submit-button.enabled:hover {
+  background-color: #45a049;
+  transform: scale(1.08);
+}
+
+.subtitle {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.upload-status {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  border-radius: 6px;
+  font-weight: bold;
+  display: none;
+}
+
+.upload-status.success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+  display: block;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.change-video-btn {
+  background-color: #f0f0f0;
+  color: #666;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+.change-video-btn:hover {
+  background-color: #e0e0e0;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1.05); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1.05); }
+}
+
+/* Styles pour la page de résultats */
+.feedback-section {
+  background-color: #f9f1e6;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-top: 2rem;
+  text-align: left;
+  font-size: 1rem;
+  color: #333;
+}
+
+.feedback-section h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.3rem;
+}
+.form-label {
+  font-weight: 500;
+  font-size: 1rem;
+  color: #444;
+}
+
+.select-input {
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background-color: #fff8ee;
+  width: 80%;
+  max-width: 320px;
+}
+.motion-type {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.form-label {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #444;
+}
+
+.select-input {
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background-color: #fff8ee;
+  width: 80%;
+  max-width: 320px;
+}

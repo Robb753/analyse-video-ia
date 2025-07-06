@@ -1,0 +1,17 @@
+# Ignorer les environnements virtuels
+venv/
+.env
+
+# Fichiers Python à ignorer
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Dossiers de sortie
+uploads/
+processed/
+
+# Fichiers système
+.DS_Store
+Thumbs.db

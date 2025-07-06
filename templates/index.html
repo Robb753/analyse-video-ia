@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analyse de Mouvement</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+</head>
+<body>
+  <div class="container">
+    <h1 class="title">Je veux m'améliorer. Montre-moi comment.</h1>
+
+    <form id="upload-form" method="POST" enctype="multipart/form-data" action="/upload">
+      <label for="video-upload" class="upload-button" id="uploadLabel">
+        📁 Téléverser une vidéo
+        <input type="file" name="video" id="video-upload" accept="video/mp4,video/quicktime" />
+      </label>
+      
+      <!-- Zone de prévisualisation de la vidéo -->
+      <div id="videoPreview" class="video-preview-container">
+        <video id="previewVideo" class="video-preview" controls>
+          Votre navigateur ne supporte pas la lecture vidéo.
+        </video>
+        
+        <div class="video-info">
+          <h3>✅ Vidéo chargée avec succès</h3>
+          <div class="video-details">
+            <div class="detail-item">
+              <span>📝</span>
+              <span id="fileName">Nom du fichier</span>
+            </div>
+            <div class="detail-item">
+              <span>📏</span>
+              <span id="fileSize">Taille du fichier</span>
+            </div>
+            <div class="detail-item">
+              <span>⏱️</span>
+              <span id="videoDuration">Durée</span>
+            </div>
+          </div>
+        </div>
+        
+        <button type="button" class="change-video-btn" id="changeVideoBtn">
+          🔄 Changer de vidéo
+        </button>
+      </div>
+      <!-- Type de mouvement sélectionné -->
+<div class="motion-type">
+  <label for="activity_type" class="form-label">Quel est le type de mouvement analysé ?</label><br />
+  <select name="activity_type" id="activity_type" class="select-input" required>
+    <option value="">-- Choisissez une catégorie --</option>
+    <option value="basketball">Tir au basket</option>
+    <option value="golf">Swing de golf</option>
+    <option value="yoga">Posture de yoga</option>
+    <option value="squat">Exercice de squat</option>
+    <option value="équilibre">Test d’équilibre</option>
+    <option value="autre">Autre ou inconnu</option>
+  </select>
+</div>
+      <div class="upload-status" id="uploadStatus">
+        🎬 Vidéo prête pour l'analyse !
+      </div>
+      
+      <br /><br />
+      <button type="submit" class="submit-button" id="analyzeBtn" disabled>
+        🚀 Analyser ma vidéo
+      </button>
+    </form>
+
+    <p class="subtitle">
+      Vidéo personnelle uniquement. Analyse locale. Rien n'est stocké.
+    </p>
+  </div>
+
+  <script>
+    let videoUpload = document.getElementById('video-upload');
+    const uploadLabel = document.getElementById('uploadLabel');
+    const videoPreview = document.getElementById('videoPreview');
+    const previewVideo = document.getElementById('previewVideo');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const videoDuration = document.getElementById('videoDuration');
+    const changeVideoBtn = document.getElementById('changeVideoBtn');
+
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function formatDuration(seconds) {
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = Math.floor(seconds % 60);
+      return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+
+    function handleVideoUpload(e) {
+      const file = e.target.files[0];
+      
+      if (file) {
+        console.log('Fichier sélectionné:', file.name);
+        
+        // Vérifier le type de fichier
+        const validTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
+        if (!validTypes.includes(file.type)) {
+          alert('Format de fichier non supporté. Utilisez MP4 ou MOV.');
+          e.target.value = '';
+          return;
+        }
+
+        // Vérifier la taille du fichier (limite à 100MB)
+        if (file.size > 100 * 1024 * 1024) {
+          alert('Fichier trop volumineux. Limite de 100MB.');
+          e.target.value = '';
+          return;
+        }
+
+        // Créer une URL pour la prévisualisation
+        const videoURL = URL.createObjectURL(file);
+        previewVideo.src = videoURL;
+        
+        // Afficher les informations du fichier
+        fileName.textContent = file.name;
+        fileSize.textContent = formatFileSize(file.size);
+        
+        // Attendre que les métadonnées soient chargées pour obtenir la durée
+        previewVideo.addEventListener('loadedmetadata', function() {
+          videoDuration.textContent = formatDuration(previewVideo.duration);
+        }, { once: true });
+        
+        // Afficher la zone de prévisualisation
+        videoPreview.classList.add('show');
+        uploadStatus.classList.add('success');
+        
+        // Activer le bouton d'analyse
+        analyzeBtn.disabled = false;
+        analyzeBtn.classList.add('enabled');
+        analyzeBtn.innerHTML = '🚀 Analyser cette vidéo';
+        
+        // Changer le texte du bouton d'upload
+        uploadLabel.innerHTML = '✅ Vidéo chargée<input type="file" name="video" id="video-upload" accept="video/mp4,video/quicktime" />';
+        
+        // Réattacher l'événement au nouvel input
+        videoUpload = document.getElementById('video-upload');
+        videoUpload.addEventListener('change', handleVideoUpload);
+        
+        // Animation du bouton
+        analyzeBtn.style.animation = 'pulse 2s infinite';
+      }
+    }
+
+    function changeVideo() {
+      console.log('Changement de vidéo demandé');
+      
+      // Réinitialiser tout
+      videoPreview.classList.remove('show');
+      uploadStatus.classList.remove('success');
+      analyzeBtn.disabled = true;
+      analyzeBtn.classList.remove('enabled');
+      analyzeBtn.innerHTML = '🚀 Analyser ma vidéo';
+      analyzeBtn.style.animation = 'none';
+      
+      // Réinitialiser le label d'upload
+      uploadLabel.innerHTML = '📁 Téléverser une vidéo<input type="file" name="video" id="video-upload" accept="video/mp4,video/quicktime" />';
+      
+      // Réattacher l'événement au nouvel input
+      videoUpload = document.getElementById('video-upload');
+      videoUpload.addEventListener('change', handleVideoUpload);
+      
+      // Nettoyer l'URL de prévisualisation
+      if (previewVideo.src) {
+        URL.revokeObjectURL(previewVideo.src);
+        previewVideo.src = '';
+      }
+    }
+
+    // Attacher les événements initiaux
+    videoUpload.addEventListener('change', handleVideoUpload);
+    changeVideoBtn.addEventListener('click', changeVideo);
+
+    // Empêcher la soumission du formulaire si pas de vidéo
+    document.getElementById('upload-form').addEventListener('submit', function(e) {
+      if (analyzeBtn.disabled) {
+        e.preventDefault();
+        alert('Veuillez d\'abord sélectionner une vidéo.');
+        return false;
+      }
+      console.log('Formulaire soumis - analyse en cours...');
+    });
+  </script>
+</body>
+</html>

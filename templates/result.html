@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Résultat de l'analyse</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1 class="title">Voici ton analyse vidéo</h1>
+
+    <video width="100%" height="auto" controls>
+      <source src="{{ url_for('download_file', filename=filename) }}" type="video/mp4" />
+      Ton navigateur ne prend pas en charge la vidéo.
+    </video>
+
+    <div class="action-buttons">
+      <a class="submit-button" href="{{ url_for('download_file', filename=filename) }}" download>
+        📥 Télécharger la vidéo annotée
+      </a>
+      
+      <button class="submit-button cleanup-btn" onclick="cleanupFiles()">
+        🗑️ Supprimer mes fichiers
+      </button>
+    </div>
+
+    <div class="feedback-section">
+      <h2>📝 Analyse automatique</h2>
+      <p><strong>Type d'activité :</strong> {{ activity_type }}</p>
+      
+      {% if analysis_summary %}
+      <div class="metrics-summary">
+        <h3>📊 Résumé des métriques</h3>
+        <p><strong>Score global :</strong> {{ "%.1f"|format(analysis_summary.overall_score) }}/100</p>
+        <p><strong>Images analysées :</strong> {{ analysis_summary.frames_analyzed }}</p>
+      </div>
+      {% endif %}
+      
+      <div class="ai-feedback">
+        <h3>🤖 Feedback IA personnalisé</h3>
+        <div class="feedback-text">{{ feedback | safe }}</div>
+      </div>
+      
+      {% if observations %}
+      <div class="technical-observations">
+        <h3>🔬 Observations techniques</h3>
+        <p>{{ observations }}</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="navigation">
+      <a class="submit-button" href="{{ url_for('index') }}">← Nouvelle analyse</a>
+    </div>
+    
+    <div id="cleanup-message" style="display: none; margin-top: 1rem; padding: 1rem; background-color: #d4edda; color: #155724; border-radius: 6px;">
+      ✅ Fichiers supprimés avec succès !
+    </div>
+  </div>
+
+  <script>
+    function cleanupFiles() {
+      if (confirm('Êtes-vous sûr de vouloir supprimer vos fichiers ? Cette action est irréversible.')) {
+        fetch(`/api/cleanup/{{ task_id }}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            document.getElementById('cleanup-message').style.display = 'block';
+            // Désactive les boutons de téléchargement
+            document.querySelector('.action-buttons').style.opacity = '0.5';
+            document.querySelector('.cleanup-btn').textContent = '✅ Fichiers supprimés';
+            document.querySelector('.cleanup-btn').disabled = true;
+          } else {
+            alert('Erreur lors de la suppression : ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Erreur:', error);
+          alert('Erreur lors de la suppression');
+        });
+      }
+    }
+  </script>
+
+  <style>
+    .action-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin: 1rem 0;
+      flex-wrap: wrap;
+    }
+    
+    .cleanup-btn {
+      background-color: #dc3545 !important;
+      color: white !important;
+    }
+    
+    .cleanup-btn:hover {
+      background-color: #c82333 !important;
+    }
+    
+    .cleanup-btn:disabled {
+      background-color: #6c757d !important;
+      cursor: not-allowed;
+    }
+    
+    .metrics-summary, .ai-feedback, .technical-observations {
+      margin: 1.5rem 0;
+      padding: 1rem;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      border-left: 4px solid #007bff;
+    }
+    
+    .feedback-text {
+      white-space: pre-line;
+      line-height: 1.6;
+    }
+    
+    .navigation {
+      margin-top: 2rem;
+      text-align: center;
+    }
+  </style>
+</body>
+</html>
