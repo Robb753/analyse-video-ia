@@ -3,6 +3,8 @@ import mediapipe as mp
 import numpy as np
 import math
 import os
+from .dense_analyzer import DenseVisualAnalyzer
+from .motion_focused_dense_analyzer import MotionFocusedDenseAnalyzer
 
 class UniversalMovementAnalyzer:
     def __init__(self):
@@ -13,6 +15,8 @@ class UniversalMovementAnalyzer:
                 min_detection_confidence=0.5,
                 min_tracking_confidence=0.5
             )
+            self.dense_analyzer = DenseVisualAnalyzer()
+            self.motion_analyzer = MotionFocusedDenseAnalyzer()
         except Exception as e:
             print(f"Erreur d'initialisation MediaPipe : {e}")
             raise
@@ -88,8 +92,8 @@ class UniversalMovementAnalyzer:
                     if results.pose_landmarks:
                         landmarks = results.pose_landmarks.landmark
                         
-                        # Analyse biomécanique
-                        current_analysis = self.analyze_pose_frame(landmarks, width, height)
+                        # Analyse biomécanique avec métriques adaptatives
+                        current_analysis = self.analyze_pose_frame(landmarks, width, height, activity_type)
                         pose_data.append(current_analysis)
                         
                         # Dessiner les landmarks
@@ -102,6 +106,27 @@ class UniversalMovementAnalyzer:
                         # Afficher métriques en temps réel
                         self.display_metrics(frame, current_analysis, activity_type)
                     
+                    # ANALYSE DENSE (si demandée)
+                    if activity_type in ['dense', 'analyse_complete', 'inspection']:
+                        dense_points = self.dense_analyzer.extract_dense_points(frame)
+                        dense_lines = self.dense_analyzer.extract_dense_lines(frame)
+                        frame = self.dense_analyzer.draw_dense_annotations(frame, dense_points, dense_lines)
+                    
+                    # ANALYSE MOTION-FOCUSED (nouvelle option)
+                    elif activity_type in ['motion_focus', 'mouvement_focus', 'smart_analysis']:
+                        frame, num_points, num_lines = self.motion_analyzer.analyze_motion_dense(frame, landmarks)
+                    
+                    # ANALYSE HYBRIDE (dense + motion)
+                    elif activity_type in ['hybride', 'analyse_hybride']:
+                        # D'abord l'analyse motion-focused
+                        frame, num_points, num_lines = self.motion_analyzer.analyze_motion_dense(frame, landmarks)
+                        # Puis quelques points dense en arrière-plan (réduits)
+                        dense_points = self.dense_analyzer.extract_dense_points(frame)
+                        # Filtrer pour garder seulement 1 point sur 4
+                        filtered_points = dense_points[::4]  
+                        frame = self.dense_analyzer.draw_dense_annotations(frame, filtered_points, [])
+                    
+                    # Écrire la frame (UNE SEULE FOIS)
                     out.write(frame)
                     
                 except Exception as e:
@@ -152,8 +177,8 @@ class UniversalMovementAnalyzer:
                 'file_size': 0
             }
     
-    def analyze_pose_frame(self, landmarks, width, height):
-        """Analyse d'une frame individuelle avec gestion d'erreurs"""
+    def analyze_pose_frame(self, landmarks, width, height, activity_type="general"):
+        """Analyse d'une frame individuelle avec métriques adaptatives selon l'activité"""
         
         try:
             # Points clés avec vérification
@@ -171,28 +196,23 @@ class UniversalMovementAnalyzer:
             right_knee = landmarks[26]
             left_ankle = landmarks[27]
             right_ankle = landmarks[28]
+            left_wrist = landmarks[15]
+            right_wrist = landmarks[16]
             
             analysis = {}
             
-            # 1. ÉQUILIBRE (centre de gravité)
-            center_of_mass = self.calculate_center_of_mass(landmarks)
-            foot_center = ((left_ankle.x + right_ankle.x) / 2, (left_ankle.y + right_ankle.y) / 2)
-            balance_offset = abs(center_of_mass[0] - foot_center[0])
-            analysis['balance_score'] = max(0, min(100, 100 - (balance_offset * 1000)))
+            # 1. ÉQUILIBRE ADAPTATIF selon l'activité
+            analysis['balance_score'] = self.calculate_adaptive_balance(landmarks, activity_type)
             
-            # 2. SYMÉTRIE CORPORELLE
-            shoulder_symmetry = abs(left_shoulder.y - right_shoulder.y)
-            hip_symmetry = abs(left_hip.y - right_hip.y)
-            analysis['symmetry_score'] = max(0, min(100, 100 - ((shoulder_symmetry + hip_symmetry) * 500)))
+            # 2. SYMÉTRIE CORPORELLE ADAPTATIVE
+            analysis['symmetry_score'] = self.calculate_adaptive_symmetry(landmarks, activity_type)
             
-            # 3. ALIGNEMENT POSTURAL
-            head_shoulder_alignment = abs(nose.x - ((left_shoulder.x + right_shoulder.x) / 2))
-            shoulder_hip_alignment = abs(((left_shoulder.x + right_shoulder.x) / 2) - ((left_hip.x + right_hip.x) / 2))
-            analysis['posture_score'] = max(0, min(100, 100 - ((head_shoulder_alignment + shoulder_hip_alignment) * 200)))
+            # 3. ALIGNEMENT POSTURAL ADAPTATIF
+            analysis['posture_score'] = self.calculate_adaptive_posture(landmarks, activity_type)
             
             # 4. ANGLES ARTICULAIRES
-            analysis['left_elbow_angle'] = self.calculate_angle(left_shoulder, left_elbow, landmarks[15])
-            analysis['right_elbow_angle'] = self.calculate_angle(right_shoulder, right_elbow, landmarks[16])
+            analysis['left_elbow_angle'] = self.calculate_angle(left_shoulder, left_elbow, left_wrist)
+            analysis['right_elbow_angle'] = self.calculate_angle(right_shoulder, right_elbow, right_wrist)
             analysis['left_knee_angle'] = self.calculate_angle(left_hip, left_knee, left_ankle)
             analysis['right_knee_angle'] = self.calculate_angle(right_hip, right_knee, right_ankle)
             
@@ -207,20 +227,162 @@ class UniversalMovementAnalyzer:
             
         except Exception as e:
             print(f"Erreur dans analyze_pose_frame : {e}")
-            # Retourner des valeurs par défaut
+            # Retourner des valeurs par défaut raisonnables
             return {
-                'balance_score': 50,
-                'symmetry_score': 50,
-                'posture_score': 50,
+                'balance_score': 70,
+                'symmetry_score': 70,
+                'posture_score': 70,
                 'left_elbow_angle': 90,
                 'right_elbow_angle': 90,
                 'left_knee_angle': 90,
                 'right_knee_angle': 90,
-                'head_stability': 50,
+                'head_stability': 70,
                 'shoulder_width': 0.3,
                 'hip_width': 0.3,
                 'error': True
             }
+    
+    def calculate_adaptive_balance(self, landmarks, activity_type):
+        """Calcul d'équilibre adapté selon le type d'activité"""
+        
+        try:
+            # Points de référence
+            left_shoulder = landmarks[11]
+            right_shoulder = landmarks[12]
+            left_hip = landmarks[23]
+            right_hip = landmarks[24]
+            left_ankle = landmarks[27]
+            right_ankle = landmarks[28]
+            left_wrist = landmarks[15]
+            right_wrist = landmarks[16]
+            
+            # Centre du tronc (plus stable que centre de masse pour postures statiques)
+            trunk_center_x = (left_shoulder.x + right_shoulder.x + left_hip.x + right_hip.x) / 4
+            
+            # Déterminer la base de support selon l'activité
+            if activity_type in ["yoga", "équilibre"]:
+                # Pour yoga/équilibre : détecter si mains au sol
+                hands_on_ground = (left_wrist.y > left_ankle.y - 0.1) or (right_wrist.y > right_ankle.y - 0.1)
+                
+                if hands_on_ground:
+                    # Base = mains + pieds
+                    base_center_x = (left_ankle.x + right_ankle.x + left_wrist.x + right_wrist.x) / 4
+                    balance_multiplier = 200  # Seuil moins strict pour postures au sol
+                else:
+                    # Base = pieds seulement
+                    base_center_x = (left_ankle.x + right_ankle.x) / 2
+                    balance_multiplier = 300  # Seuil modéré pour postures debout
+                    
+            elif activity_type in ["basketball", "golf"]:
+                # Sports dynamiques : base = pieds, seuil plus strict
+                base_center_x = (left_ankle.x + right_ankle.x) / 2
+                balance_multiplier = 500
+                
+            else:
+                # Activités générales
+                base_center_x = (left_ankle.x + right_ankle.x) / 2
+                balance_multiplier = 400
+            
+            # Calcul de l'écart d'équilibre
+            balance_offset = abs(trunk_center_x - base_center_x)
+            
+            # Score adaptatif
+            balance_score = max(0, min(100, 100 - (balance_offset * balance_multiplier)))
+            
+            return balance_score
+            
+        except Exception as e:
+            print(f"Erreur calcul équilibre adaptatif : {e}")
+            return 75  # Score par défaut raisonnable
+    
+    def calculate_adaptive_symmetry(self, landmarks, activity_type):
+        """Calcul de symétrie avec seuils adaptés selon l'activité"""
+        
+        try:
+            left_shoulder = landmarks[11]
+            right_shoulder = landmarks[12]
+            left_hip = landmarks[23]
+            right_hip = landmarks[24]
+            left_knee = landmarks[25]
+            right_knee = landmarks[26]
+            left_ankle = landmarks[27]
+            right_ankle = landmarks[28]
+            
+            # Symétrie des différents segments
+            shoulder_symmetry = abs(left_shoulder.y - right_shoulder.y)
+            hip_symmetry = abs(left_hip.y - right_hip.y)
+            knee_symmetry = abs(left_knee.y - right_knee.y)
+            ankle_symmetry = abs(left_ankle.y - right_ankle.y)
+            
+            # Asymétrie totale
+            total_asymmetry = shoulder_symmetry + hip_symmetry + knee_symmetry + ankle_symmetry
+            
+            # Seuils adaptés selon l'activité
+            if activity_type in ["yoga", "équilibre"]:
+                # Yoga/équilibre : seuil plus tolérant car postures peuvent être asymétriques
+                symmetry_multiplier = 80
+            elif activity_type == "golf":
+                # Golf : asymétrie normale pendant le swing
+                symmetry_multiplier = 60
+            elif activity_type in ["basketball", "squat"]:
+                # Sports/exercices : symétrie importante
+                symmetry_multiplier = 120
+            else:
+                # Général
+                symmetry_multiplier = 100
+            
+            # Score de symétrie
+            symmetry_score = max(0, min(100, 100 - (total_asymmetry * symmetry_multiplier)))
+            
+            return symmetry_score
+            
+        except Exception as e:
+            print(f"Erreur calcul symétrie adaptative : {e}")
+            return 75
+    
+    def calculate_adaptive_posture(self, landmarks, activity_type):
+        """Calcul de posture avec critères adaptés selon l'activité"""
+        
+        try:
+            nose = landmarks[0]
+            left_shoulder = landmarks[11]
+            right_shoulder = landmarks[12]
+            left_hip = landmarks[23]
+            right_hip = landmarks[24]
+            
+            # Centres de segments
+            shoulder_center_x = (left_shoulder.x + right_shoulder.x) / 2
+            hip_center_x = (left_hip.x + right_hip.x) / 2
+            
+            # Alignements
+            head_shoulder_alignment = abs(nose.x - shoulder_center_x)
+            shoulder_hip_alignment = abs(shoulder_center_x - hip_center_x)
+            
+            # Désalignement total
+            total_misalignment = head_shoulder_alignment + shoulder_hip_alignment
+            
+            # Seuils adaptés selon l'activité
+            if activity_type in ["yoga", "équilibre"]:
+                # Yoga : alignement crucial mais flexible selon la posture
+                posture_multiplier = 40
+            elif activity_type == "golf":
+                # Golf : posture adaptée au swing
+                posture_multiplier = 35
+            elif activity_type in ["basketball", "squat"]:
+                # Sports/exercices : posture athlétique attendue
+                posture_multiplier = 60
+            else:
+                # Général
+                posture_multiplier = 50
+            
+            # Score de posture
+            posture_score = max(0, min(100, 100 - (total_misalignment * posture_multiplier)))
+            
+            return posture_score
+            
+        except Exception as e:
+            print(f"Erreur calcul posture adaptative : {e}")
+            return 75
     
     def calculate_center_of_mass(self, landmarks):
         """Calcule le centre de masse approximatif"""

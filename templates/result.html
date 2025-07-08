@@ -46,7 +46,7 @@
       document.querySelector('video').addEventListener('canplay', function() {
           console.log('Vidéo prête à être lue');
       });
-      </script>
+    </script>
 
     <div class="action-buttons">
       <a class="submit-button" href="{{ url_for('download_file', filename=filename) }}" download>
@@ -84,11 +84,18 @@
     </div>
 
     <div class="navigation">
-      <a class="submit-button" href="{{ url_for('index') }}">← Nouvelle analyse</a>
+      <button class="submit-button new-analysis-btn" onclick="newAnalysisWithCleanup()">
+        🔄 Nouvelle analyse
+      </button>
     </div>
     
     <div id="cleanup-message" style="display: none; margin-top: 1rem; padding: 1rem; background-color: #d4edda; color: #155724; border-radius: 6px;">
       ✅ Fichiers supprimés avec succès !
+    </div>
+
+    <div id="loading-message" style="display: none; margin-top: 1rem; padding: 1rem; background-color: #fff3cd; color: #856404; border-radius: 6px; text-align: center;">
+      <div class="spinner" style="display: inline-block; margin-right: 10px;"></div>
+      🧹 Nettoyage en cours... Redirection dans un instant !
     </div>
   </div>
 
@@ -119,6 +126,84 @@
         });
       }
     }
+
+    function newAnalysisWithCleanup() {
+      // Afficher le message de chargement
+      document.getElementById('loading-message').style.display = 'block';
+      
+      // Désactiver le bouton pour éviter les clics multiples
+      const newAnalysisBtn = document.querySelector('.new-analysis-btn');
+      newAnalysisBtn.disabled = true;
+      newAnalysisBtn.style.opacity = '0.5';
+      newAnalysisBtn.textContent = '🧹 Nettoyage...';
+      
+      // Faire le nettoyage automatique
+      fetch(`/api/cleanup/{{ task_id }}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          console.log('✅ Nettoyage automatique réussi');
+          
+          // Attendre un peu pour que l'utilisateur voie le message
+          setTimeout(() => {
+            // Rediriger vers la page d'accueil
+            window.location.href = "{{ url_for('index') }}";
+          }, 1500);
+          
+        } else {
+          console.warn('⚠️ Erreur de nettoyage, redirection quand même');
+          // Rediriger même en cas d'erreur de nettoyage
+          setTimeout(() => {
+            window.location.href = "{{ url_for('index') }}";
+          }, 1000);
+        }
+      })
+      .catch(error => {
+        console.error('❌ Erreur lors du nettoyage:', error);
+        console.log('🔄 Redirection malgré l\'erreur');
+        
+        // Rediriger même en cas d'erreur
+        setTimeout(() => {
+          window.location.href = "{{ url_for('index') }}";
+        }, 1000);
+      });
+    }
+
+    // Optionnel : Nettoyage automatique quand l'utilisateur quitte la page
+    window.addEventListener('beforeunload', function() {
+      // Nettoyage silencieux (sans attendre la réponse)
+      navigator.sendBeacon(`/api/cleanup/{{ task_id }}`, 
+        JSON.stringify({silent: true}));
+    });
+
+    // Optionnel : Nettoyage automatique après 10 minutes d'inactivité
+    let inactivityTimer;
+    
+    function resetInactivityTimer() {
+      clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(() => {
+        console.log('🕒 Nettoyage automatique après inactivité');
+        fetch(`/api/cleanup/{{ task_id }}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        }).then(() => {
+          console.log('✅ Nettoyage automatique terminé');
+        });
+      }, 10 * 60 * 1000); // 10 minutes
+    }
+    
+    // Détecter l'activité de l'utilisateur
+    ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'].forEach(event => {
+      document.addEventListener(event, resetInactivityTimer, true);
+    });
+    
+    // Démarrer le timer d'inactivité
+    resetInactivityTimer();
   </script>
 
   <style>
@@ -144,6 +229,30 @@
       cursor: not-allowed;
     }
     
+    .new-analysis-btn {
+      background-color: #28a745 !important;
+      color: white !important;
+      border: none;
+      padding: 0.8rem 1.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.3s;
+    }
+    
+    .new-analysis-btn:hover:not(:disabled) {
+      background-color: #218838 !important;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    }
+    
+    .new-analysis-btn:disabled {
+      background-color: #6c757d !important;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    
     .metrics-summary, .ai-feedback, .technical-observations {
       margin: 1.5rem 0;
       padding: 1rem;
@@ -160,6 +269,31 @@
     .navigation {
       margin-top: 2rem;
       text-align: center;
+    }
+
+    /* Spinner pour le chargement */
+    .spinner {
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #856404;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Messages d'état */
+    #cleanup-message, #loading-message {
+      animation: slideIn 0.3s ease;
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateY(-10px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
   </style>
 </body>

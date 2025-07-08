@@ -63,9 +63,9 @@ Liste ce qui est bien fait (même si imparfait, trouve du positif !).
 Identifie 2-3 points techniques précis à corriger, avec l'impact sur la performance.
 
 ## 🏋️ Conseils pratiques
-Donne 2-3 exercices ou corrections simples à appliquer immédiatement.
+Donne 1 exercices ou corrections simples à appliquer immédiatement.
 
-**Ton :** Bienveillant, technique mais accessible, motivant. Utilise des emojis pour structurer.
+**Ton :** Bienveillant, technique mais accessible, motivant.
 """
 
     try:
@@ -77,7 +77,7 @@ Donne 2-3 exercices ou corrections simples à appliquer immédiatement.
             prompt,
             generation_config=genai.types.GenerationConfig(
                 temperature=0.7,
-                max_output_tokens=400,
+                max_output_tokens=600,
                 top_p=0.8,
             )
         )
